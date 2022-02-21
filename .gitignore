@@ -11,3 +11,4 @@ yarn.lock
 .dynamodb
 package-lock.json
 .webpack
+.env
