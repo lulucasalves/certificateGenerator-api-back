@@ -1,8 +1,10 @@
-import * as path from 'path'
+const chromium = require('chrome-aws-lambda')
+const path = require('path')
+const fs = require('fs')
+const handlebars = require('handlebars')
+const dayjs = require('dayjs')
+import { S3 } from 'aws-sdk'
 import { document } from '../utils/dynamodbClient'
-import * as fs from 'fs'
-import * as handlebars from 'handlebars'
-import * as dayjs from 'dayjs'
 
 interface ICreateCertificate {
   id: string
@@ -34,16 +36,28 @@ const compile = async function (data: ITemplate) {
 export const handle = async event => {
   const { id, name, grade } = JSON.parse(event.body) as ICreateCertificate
 
-  await document
-    .put({
-      TableName: 'users_certificates',
-      Item: {
-        id,
-        name,
-        grade
-      }
+  const response = await document
+    .query({
+      TableName: '',
+      KeyConditionExpression: 'id = :id',
+      ExpressionAttributeValues: { ':id': id }
     })
     .promise()
+
+  const userAlreadyExists = response.Items[0]
+
+  if (!userAlreadyExists) {
+    await document
+      .put({
+        TableName: 'users_certificates',
+        Item: {
+          id,
+          name,
+          grade
+        }
+      })
+      .promise()
+  }
 
   const medalPath = path.join(process.cwd(), 'src', 'templates', 'seal.png')
   const medal = fs.readFileSync(medalPath, 'base64')
@@ -58,10 +72,44 @@ export const handle = async event => {
 
   const content = await compile(data)
 
+  const browser = await chromium.puppeteer.launch({
+    headless: true,
+    args: chromium.args,
+    defaultViewPort: chromium.defaultViewport,
+    executablePath: await chromium.executablePath
+  })
+
+  const page = await browser.newPage()
+
+  await page.setContent(content)
+
+  const pdf = await page.pdf({
+    format: 'a4',
+    landscape: true,
+    path: process.env.IS_OFFLINE ? 'certificate.pdf' : null,
+    printBackground: true,
+    preferCSSPageSize: true
+  })
+
+  await browser.close()
+
+  const s3 = new S3()
+
+  await s3
+    .putObject({
+      Bucket: 'serverlessignite',
+      Key: `${id}.pdf`,
+      ACL: 'public-read',
+      Body: pdf,
+      ContentType: 'application/pdf'
+    })
+    .promise()
+
   return {
     statusCode: 201,
     body: JSON.stringify({
-      message: 'certificate created successfully'
+      message: 'certificate created successfully',
+      url: `https://serverlessignite.s3.sa-east-1.amazonaws.com/${id}.pdf`
     }),
     headers: { 'Content-Type': 'application/json' }
   }

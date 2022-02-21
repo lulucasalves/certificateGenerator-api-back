@@ -1,13 +1,7 @@
 const path = require('path')
 const slsw = require('serverless-webpack')
 const nodeExternals = require('webpack-node-externals')
-const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin')
 const CopyWebpackPlugin = require('copy-webpack-plugin')
-
-/*
-This line is only required if you are specifying `TS_NODE_PROJECT` for whatever reason.
- */
-// delete process.env.TS_NODE_PROJECT;
 
 module.exports = {
   context: __dirname,
@@ -17,14 +11,9 @@ module.exports = {
     ? 'eval-cheap-module-source-map'
     : 'source-map',
   resolve: {
-    extensions: ['.mjs', '.json', '.ts'],
+    extensions: ['.mjs', '.json', '.ts', '.html', '.png'],
     symlinks: false,
-    cacheWithContext: false,
-    plugins: [
-      new TsconfigPathsPlugin({
-        configFile: './tsconfig.paths.json'
-      })
-    ]
+    cacheWithContext: false
   },
   output: {
     libraryTarget: 'commonjs',
@@ -53,6 +42,14 @@ module.exports = {
           transpileOnly: true,
           experimentalWatchApi: true
         }
+      },
+      {
+        test: /\.(jpg|png)$/,
+        use: [
+          {
+            loader: 'file-loader'
+          }
+        ]
       }
     ]
   },
