@@ -5,6 +5,7 @@ certificado em pdf e consultar se o certificado é valido no banco de dados, a
 aplicação é integrada com a AWS e DynamoDB. Feito no curso Ignite de Nodejs.
 
 ![certificate img]()
+[Visualize o pdf](https://serverlessignite.s3.sa-east-1.amazonaws.com/d7939181-64c0-4ad0-b355-62837f2c2bd8.pdf)
 
 ## Tecnologias Útilizadas
 
